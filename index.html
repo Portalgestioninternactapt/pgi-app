@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Portal de Gestión Interna – Inclusión Social</title>
+  <meta name="description" content="Portal de Gestión Interna · Inclusión Social (SENA Apartadó).">
+
+  <!-- Vista previa al compartir el enlace (WhatsApp, correo, Teams, Facebook). Las direcciones deben ser completas. -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CO">
+  <meta property="og:site_name" content="Portal de Gestión Interna">
+  <meta property="og:title" content="Portal de Gestión Interna – Inclusión Social">
+  <meta property="og:description" content="SENA · Apartadó, Antioquia. Ingresa con tu correo registrado.">
+  <meta property="og:url" content="https://portalgestioninternactapt.github.io/pgi-app/">
+  <meta property="og:image" content="https://portalgestioninternactapt.github.io/pgi-app/iconos/vista-previa.jpg">
+  <meta property="og:image:secure_url" content="https://portalgestioninternactapt.github.io/pgi-app/iconos/vista-previa.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Logo del Portal de Gestión Interna – Inclusión Social">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://portalgestioninternactapt.github.io/pgi-app/iconos/vista-previa.jpg">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#39a900">
+  <link rel="icon" type="image/png" sizes="32x32" href="iconos/favicon-32.png">
+  <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Portal SENA">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+        integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD" crossorigin="anonymous">
+  <style>
+    :root { --verde: #39a900; --verde-oscuro: #2d8500; --verde-suave: #eef9e6; --verde-borde: #cfe8bf;
+            --texto: #2c3e50; --suave: #6c757d; --fondo: #f8fafc; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--fondo); overflow: hidden;
+                 overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
+                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--texto); }
+    /* iPhone: sin el «rebote» de la página de la app; el desplazamiento lo hace cada herramienta por dentro. */
+    .marco { position: fixed; inset: 0; z-index: 2; width: 100%; height: 100%; border: 0; display: block; background: var(--fondo); }
+    /* La página nueva carga DEBAJO de la anterior (tapada, pero visible para el navegador): si se ocultara,
+       Android y iPhone frenan su carga y solo terminaba al tocar la pantalla. La anterior sigue a la vista,
+       con su propia animación, hasta que la nueva está lista. */
+    .marco.cargando { z-index: 1; pointer-events: none; }
+
+    .capa { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; text-align: center; padding: 24px; background: var(--fondo);
+            transition: opacity .25s ease; }
+    .capa[hidden] { display: none; }
+    .capa.saliendo { opacity: 0; pointer-events: none; }
+    .lento { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 22; background: #fff;
+             border-radius: 12px; border-left: 6px solid var(--verde); box-shadow: 0 10px 26px rgba(0, 0, 0, .16);
+             padding: 10px 16px; font-size: .85rem; color: var(--suave); display: flex; gap: 10px; align-items: center;
+             max-width: calc(100% - 20px); }
+    .lento[hidden] { display: none; }
+    .capa img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 26px rgba(57, 169, 0, .28); margin-bottom: 18px; }
+    .capa h1 { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
+    .capa p { font-size: .9rem; color: var(--suave); margin: 0 0 18px; max-width: 340px; line-height: 1.45; }
+    .capa .ayuda { margin-top: 18px; font-size: .85rem; color: var(--suave); }
+    .capa .ayuda[hidden] { display: none; }
+
+    .puntos { display: flex; align-items: center; justify-content: center; gap: 10px; height: 22px; }
+    .puntos i { display: block; border-radius: 50%; background: var(--verde); opacity: .25;
+                animation: onda 1.4s ease-in-out infinite; will-change: transform, opacity; }
+    .puntos i:nth-child(1) { width: 6px; height: 6px; animation-delay: 0s; }
+    .puntos i:nth-child(2) { width: 7px; height: 7px; animation-delay: .12s; }
+    .puntos i:nth-child(3) { width: 8px; height: 8px; animation-delay: .24s; }
+    .puntos i:nth-child(4) { width: 9px; height: 9px; animation-delay: .36s; }
+    .puntos i:nth-child(5) { width: 10px; height: 10px; animation-delay: .48s; }
+    .puntos i:nth-child(6) { width: 11px; height: 11px; animation-delay: .60s; }
+    .puntos i:nth-child(7) { width: 12px; height: 12px; animation-delay: .72s; }
+    @keyframes onda {
+      0%, 100% { transform: translateX(-3px) scale(.7); opacity: .25; }
+      40% { transform: translateX(3px) scale(1.3); opacity: 1; }
+      70% { transform: translateX(0) scale(.9); opacity: .5; }
+    }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+           padding: 10px 20px; border-radius: 10px; border: 2px solid var(--verde); background: var(--verde);
+           color: #fff; font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer; text-decoration: none; }
+    .btn:hover { background: var(--verde-oscuro); border-color: var(--verde-oscuro); }
+    .btn.borde { background: #fff; color: var(--verde-oscuro); border-color: var(--verde-borde); }
+    .btn.borde:hover { border-color: var(--verde); background: var(--verde-suave); }
+    .btn:focus-visible, .cerrar:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(57, 169, 0, .35); }
+    .enlace { color: var(--verde-oscuro); font-weight: 700; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
+
+    .barra-red { position: fixed; left: 0; right: 0; top: 0; z-index: 30; background: #b02a37; color: #fff;
+                 font-size: .85rem; font-weight: 600; text-align: center; padding: 8px 12px; }
+    .barra-red[hidden] { display: none; }
+
+    .progreso { position: fixed; left: 0; top: 0; height: 3px; width: 0; z-index: 25; background: var(--verde);
+                box-shadow: 0 0 8px rgba(57, 169, 0, .6); transition: width 8s cubic-bezier(.1, .7, .2, 1), opacity .3s ease; }
+    .progreso.activo { width: 85%; }
+    .progreso.fin { width: 100%; opacity: 0; transition: width .2s ease, opacity .4s ease .2s; }
+
+    .sugerencia { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 20;
+                  width: min(440px, calc(100% - 20px)); background: #fff; border-radius: 14px;
+                  border-left: 6px solid var(--verde); box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+                  display: flex; align-items: center; gap: 12px; padding: 10px 8px 10px 12px; animation: subir .3s ease both; }
+    .sugerencia[hidden] { display: none; }
+    @keyframes subir { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .sugerencia img { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; }
+    .sugerencia .txt { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.3; }
+    .sugerencia .txt b { display: block; font-size: .9rem; }
+    .sugerencia .btn { min-height: 38px; padding: 6px 14px; font-size: .85rem; flex-shrink: 0; }
+    .cerrar { width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--suave);
+              font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .cerrar:hover { background: #f1f3f5; color: var(--texto); }
+
+    .modal { position: fixed; inset: 0; z-index: 40; background: rgba(30, 30, 30, .55);
+             -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+             display: flex; align-items: center; justify-content: center; padding: 14px; }
+    .modal[hidden] { display: none; }
+    .caja { background: #fff; width: 100%; max-width: 460px; max-height: calc(100% - 20px); overflow-y: auto;
+            border-radius: 16px; border-left: 8px solid var(--verde); box-shadow: 0 25px 50px rgba(0, 0, 0, .35); }
+    .caja-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 12px 10px 12px 20px; background: var(--verde); color: #fff; }
+    .caja-cab h2 { margin: 0; font-size: 1.02rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .caja-cab .cerrar { color: #fff; }
+    .caja-cab .cerrar:hover { background: rgba(255, 255, 255, .18); color: #fff; }
+    .caja-cuerpo { padding: 18px 20px 8px; font-size: .92rem; line-height: 1.55; }
+    .caja-cuerpo p { margin: 0 0 12px; }
+    .pasos { list-style: none; counter-reset: paso; margin: 0 0 12px; padding: 0; }
+    .pasos li { counter-increment: paso; position: relative; padding: 2px 0 14px 44px; min-height: 34px; }
+    .pasos li::before { content: counter(paso); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%;
+                        background: var(--verde-suave); color: var(--verde-oscuro); border: 1px solid var(--verde-borde);
+                        display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
+    .pasos .ico svg { display: block; }
+    .pasos .ico { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px;
+                  border-radius: 7px; background: #f1f3f5; color: #0a66d8; font-size: 1rem; vertical-align: -6px; margin: 0 2px; }
+    .nota { display: flex; gap: 8px; background: #f8fafc; border-left: 4px solid var(--verde); border-radius: 8px;
+            padding: 9px 12px; font-size: .84rem; color: var(--suave); margin-bottom: 12px; }
+    .nota i { color: var(--verde); }
+    .caja-pie { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; }
+    @media (prefers-reduced-motion: reduce) { .sugerencia, .capa { animation: none; transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="progreso" id="progreso" aria-hidden="true"></div>
+  <div class="barra-red" id="barraRed" role="status" hidden><i class="bi bi-wifi-off"></i> Sin conexión a internet. El portal necesita internet para funcionar.</div>
+
+  <div class="capa" id="capaInicio" role="status" aria-live="polite">
+    <img src="iconos/icono-192.png" alt="">
+    <h1>Portal de Gestión Interna</h1>
+    <p>Inclusión Social · Complejo Tecnológico Agroindustrial, Pecuario y Turístico – Apartadó</p>
+    <div class="puntos" aria-label="Cargando"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="ayuda" id="ayudaLenta" hidden>
+      ¿Está tardando mucho?
+      <button type="button" class="enlace" id="btnReintentar">Volver a intentar</button>
+    </div>
+  </div>
+
+  <div class="lento" id="avisoLento" role="status" hidden>
+    <span>Está tardando más de lo normal.</span>
+    <button type="button" class="enlace" id="btnVolverPortal">Volver al portal</button>
+  </div>
+
+  <div class="sugerencia" id="sugerencia" role="region" aria-label="Instalar la app" hidden>
+    <img src="iconos/icono-192.png" alt="">
+    <div class="txt"><b>Instala el portal</b><span id="sugerenciaTexto">Ábrelo como una app, a pantalla completa.</span></div>
+    <button type="button" class="btn" id="btnInstalar"><i class="bi bi-download"></i> Instalar</button>
+    <button type="button" class="cerrar" id="btnNoInstalar" aria-label="Ahora no" title="Ahora no"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal" id="modalInstalar" hidden>
+    <div class="caja" role="dialog" aria-modal="true" aria-labelledby="tituloInstalar">
+      <div class="caja-cab">
+        <h2 id="tituloInstalar"><i class="bi bi-phone"></i> Instalar en mi celular</h2>
+        <button type="button" class="cerrar" id="btnCerrarInstalar" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="caja-cuerpo" id="cuerpoInstalar"></div>
+      <div class="caja-pie"><button type="button" class="btn" id="btnEntendido"><i class="bi bi-check2-circle"></i> Entendido</button></div>
+    </div>
+  </div>
+
+<script>
+  /* ==================== CONFIGURACIÓN ====================
+     URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
+     Si el portal cambia de implementación, cámbiala aquí también. */
+  var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
+  var VERSION_ENVOLTORIO = '2026-11-05d';
+  /* ====================================================== */
+
+  (function () {
+    var RE_APPS = /^https:\/\/script\.google\.com\/(a\/[^\/?#]+\/)?macros\/s\/[\w-]+\/(exec|dev)(\?[^#\s]*)?$/;
+    var RE_ORIGEN_GOOGLE = /^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/;
+    var K_NO_INSTALAR = 'pgi_no_instalar_hasta';
+
+    var capaInicio = document.getElementById('capaInicio');
+    var progreso = document.getElementById('progreso');
+    var avisoLento = document.getElementById('avisoLento');
+    var PERMISOS = 'camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; fullscreen; autoplay; display-capture';
+    var marco = null;        /* página que se ve */
+    var siguiente = null;    /* página que está cargando detrás */
+    var urlSiguiente = '';
+    var cargoAlgunaVez = false;
+    var enHerramienta = false;
+    var temporizadorLento = null;
+    var entradasAtras = 0;   /* entradas «herramienta» que la app agregó al historial */
+    var ignorarPop = 0;
+
+    function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+
+    function esPortal(url) { return String(url).split('?')[0] === URL_PORTAL; }
+
+    function urlInicial() {
+      /* Permite enlaces como …/?abrir=evidencias para entrar directo a una herramienta desde el portal. */
+      var p = new URLSearchParams(location.search);
+      var abrir = String(p.get('abrir') || '').toLowerCase();
+      return URL_PORTAL + (/^[a-z0-9-]{1,60}$/.test(abrir) ? '?abrir=' + abrir : '');
+    }
+
+    function empezarProgreso() {
+      progreso.classList.remove('fin');
+      void progreso.offsetWidth;
+      progreso.classList.add('activo');
+    }
+    function terminarProgreso() {
+      progreso.classList.add('fin');
+      setTimeout(function () { progreso.classList.remove('activo', 'fin'); }, 700);
+    }
+
+    /* Cada página (portal o herramienta) se abre en un marco NUEVO, igual que la primera vez.
+       Así no queda nada de la página anterior (ni su historial interno), que era lo que dejaba
+       pegado el regreso al portal y hacía fallar «verificar tu sesión». */
+    function cargar(url, forzar) {
+      if (siguiente && url === urlSiguiente && !forzar) return;
+      if (siguiente) { siguiente.remove(); siguiente = null; }
+      urlSiguiente = url;
+      empezarProgreso();
+      avisoLento.hidden = true;
+      clearTimeout(temporizadorLento);
+      temporizadorLento = setTimeout(function () {
+        if (!cargoAlgunaVez) document.getElementById('ayudaLenta').hidden = false;
+        else avisoLento.hidden = false;
+      }, 25000);
+
+      var f = document.createElement('iframe');
+      f.className = 'marco' + (marco ? ' cargando' : '');
+      f.title = 'Portal de Gestión Interna';
+      f.setAttribute('allow', PERMISOS);
+      f.setAttribute('allowfullscreen', '');
+      f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      f.esHerramienta = !esPortal(url);
+      f.addEventListener('load', function () { alCargar(f); });
+      f.src = url;
+      document.body.insertBefore(f, document.body.firstChild);
+      siguiente = f;
+    }
+
+    function alCargar(f) {
+      if (f !== siguiente) return;
+      siguiente = null;
+      urlSiguiente = '';
+      if (marco && marco !== f) marco.remove();
+      marco = f;
+      f.classList.remove('cargando');
+      cargoAlgunaVez = true;
+      clearTimeout(temporizadorLento);
+      avisoLento.hidden = true;
+      terminarProgreso();
+      if (!capaInicio.hidden) {
+        capaInicio.classList.add('saliendo');
+        setTimeout(function () { capaInicio.hidden = true; }, 260);
+      }
+      if (f.esHerramienta) {
+        /* La entrada para el botón atrás se agrega cuando la herramienta ya cargó: así queda
+           después de cualquier entrada interna que deje Google al armar la página. */
+        setTimeout(function () {
+          if (marco !== f || !enHerramienta) return;
+          try { history.pushState({ pgi: 'herramienta' }, ''); entradasAtras++; } catch (e) { }
+        }, 1200);
+      } else if (entradasAtras > 0) {
+        /* De vuelta en el portal: se quitan las entradas de las herramientas para que «atrás» no se acumule. */
+        var k = entradasAtras;
+        entradasAtras = 0;
+        ignorarPop++;
+        history.go(-k);
+      }
+      programarSugerencia();
+    }
+
+    function navegar(url) {
+      ocultarSugerencia(false);
+      enHerramienta = !esPortal(url);
+      cargar(url);
+    }
+
+    /* Botón «atrás» de Android dentro de una herramienta: vuelve al portal en vez de cerrar la app. */
+    window.addEventListener('popstate', function () {
+      if (ignorarPop > 0) { ignorarPop--; return; }
+      if (!enHerramienta) return;
+      enHerramienta = false;
+      var extra = Math.max(0, entradasAtras - 1);
+      entradasAtras = 0;
+      /* Se quita la herramienta de una vez (y con ella su historial interno) y se abre el portal nuevo. */
+      if (siguiente) { siguiente.remove(); siguiente = null; }
+      if (marco) { marco.remove(); marco = null; }
+      capaInicio.classList.remove('saliendo');
+      capaInicio.hidden = false;
+      cargar(URL_PORTAL, true);
+      if (extra > 0) { ignorarPop++; history.go(-extra); }
+    });
+
+    document.getElementById('btnVolverPortal').addEventListener('click', function () {
+      enHerramienta = false;
+      cargar(URL_PORTAL, true);
+    });
+
+    /* Mensajes de las páginas del portal (Menu_cliente.html y la página de «Acceso restringido»). */
+    function vieneDelPortal(ev) {
+      if (!RE_ORIGEN_GOOGLE.test(ev.origin)) return false;
+      var w = ev.source;
+      for (var i = 0; i < 5 && w; i++) {
+        if ((marco && w === marco.contentWindow) || (siguiente && w === siguiente.contentWindow)) return true;
+        try { if (w === w.parent) break; w = w.parent; } catch (e) { return false; }
+      }
+      return false;
+    }
+
+    window.addEventListener('message', function (ev) {
+      var d = ev.data;
+      if (!d || typeof d !== 'object' || typeof d.portalSena !== 'string') return;
+      if (!vieneDelPortal(ev)) return;
+      if (d.portalSena === 'hola') {
+        ev.source.postMessage({ portalSena: 'envoltorio', v: 1, version: VERSION_ENVOLTORIO, instalada: estaInstalada() }, ev.origin);
+      } else if (d.portalSena === 'navegar' && typeof d.url === 'string' && RE_APPS.test(d.url)) {
+        navegar(d.url);
+      }
+    });
+
+    document.getElementById('btnReintentar').addEventListener('click', function () {
+      document.getElementById('ayudaLenta').hidden = true;
+      cargar(urlInicial(), true);
+    });
+
+    /* ---------- Sin conexión ---------- */
+    var barraRed = document.getElementById('barraRed');
+    function estadoRed() {
+      barraRed.hidden = navigator.onLine !== false;
+    }
+    window.addEventListener('offline', estadoRed);
+    window.addEventListener('online', function () {
+      estadoRed();
+      if (!cargoAlgunaVez) cargar(urlInicial());
+    });
+    estadoRed();
+
+    /* ---------- Sugerencia de instalación ---------- */
+    var ua = navigator.userAgent || '';
+    var esIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+    var esAndroid = /Android/.test(ua);
+    var esCelular = esIOS || esAndroid || /Mobile/.test(ua);
+    var avisoInstalacion = null;
+    var sugerencia = document.getElementById('sugerencia');
+
+    function estaInstalada() {
+      try {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+               window.matchMedia('(display-mode: minimal-ui)').matches ||
+               window.navigator.standalone === true;
+      } catch (e) { return false; }
+    }
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      avisoInstalacion = e;
+      programarSugerencia();
+    });
+    window.addEventListener('appinstalled', function () {
+      avisoInstalacion = null;
+      ocultarSugerencia(false);
+    });
+
+    var sugerenciaProgramada = false;
+    function programarSugerencia() {
+      if (sugerenciaProgramada || !cargoAlgunaVez || estaInstalada()) return;
+      if (Number(leer(K_NO_INSTALAR) || 0) > Date.now()) return;
+      if (!esCelular && !avisoInstalacion) return;
+      sugerenciaProgramada = true;
+      setTimeout(function () {
+        if (enHerramienta || estaInstalada()) { sugerenciaProgramada = false; return; }
+        if (esIOS) document.getElementById('sugerenciaTexto').textContent = 'Agrégalo a tu pantalla de inicio y ábrelo como una app.';
+        sugerencia.hidden = false;
+      }, 4000);
+    }
+
+    function ocultarSugerencia(recordar) {
+      sugerencia.hidden = true;
+      sugerenciaProgramada = false;
+      if (recordar) guardar(K_NO_INSTALAR, String(Date.now() + 30 * 24 * 3600 * 1000));
+    }
+
+    document.getElementById('btnNoInstalar').addEventListener('click', function () { ocultarSugerencia(true); });
+
+    document.getElementById('btnInstalar').addEventListener('click', function () {
+      if (avisoInstalacion) {
+        var aviso = avisoInstalacion;
+        avisoInstalacion = null;
+        aviso.prompt();
+        aviso.userChoice.then(function (r) { ocultarSugerencia(r && r.outcome !== 'accepted'); }).catch(function () { });
+        return;
+      }
+      mostrarPasos();
+    });
+
+    var modal = document.getElementById('modalInstalar');
+    /* Íconos de los pasos dentro del archivo (Bootstrap Icons, MIT): se ven aunque no cargue la hoja de íconos. */
+    var SVG = {
+      compartir: 'M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1zM7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708z',
+      agregar: 'M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4',
+      menu: 'M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0'
+    };
+    function ico(nombre) {
+      return '<span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="' + SVG[nombre] + '"/></svg></span>';
+    }
+    function li(html) { var e = document.createElement('li'); e.innerHTML = html; return e; }
+    function mostrarPasos() {
+      var c = document.getElementById('cuerpoInstalar');
+      c.replaceChildren();
+      var ol = document.createElement('ol');
+      ol.className = 'pasos';
+      var nota = '';
+      if (esIOS) {
+        var otroNavegador = /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+        c.appendChild(Object.assign(document.createElement('p'), { textContent: 'En el iPhone se instala desde el botón Compartir:' }));
+        ol.appendChild(li('Toca ' + ico('compartir') + ' <b>Compartir</b> (abajo en Safari; en Chrome, arriba a la derecha).'));
+        ol.appendChild(li('Desliza y elige <b>«Agregar a inicio»</b> ' + ico('agregar') + '.'));
+        ol.appendChild(li('Si aparece <b>«Abrir como app web»</b>, déjalo activado y toca <b>Agregar</b>.'));
+        ol.appendChild(li('Abre el portal desde el ícono nuevo de tu pantalla de inicio.'));
+        nota = otroNavegador ? 'Si no ves «Agregar a inicio», abre este mismo enlace en Safari.' : 'La primera vez que la abras, inicia sesión con tu correo como siempre.';
+      } else {
+        c.appendChild(Object.assign(document.createElement('p'), { textContent: 'En Android se instala desde el menú del navegador:' }));
+        ol.appendChild(li('Toca el menú ' + ico('menu') + ' (arriba a la derecha en Chrome).'));
+        ol.appendChild(li('Elige <b>«Instalar app»</b> o <b>«Agregar a la pantalla principal»</b>.'));
+        ol.appendChild(li('Confirma con <b>Instalar</b>.'));
+        ol.appendChild(li('Abre el portal desde el ícono nuevo, junto a tus otras apps.'));
+        nota = 'La primera vez que la abras, inicia sesión con tu correo como siempre.';
+      }
+      c.appendChild(ol);
+      var n = document.createElement('div');
+      n.className = 'nota';
+      n.innerHTML = '<i class="bi bi-lightbulb"></i>';
+      n.appendChild(Object.assign(document.createElement('span'), { textContent: nota }));
+      c.appendChild(n);
+      modal.hidden = false;
+      document.getElementById('btnEntendido').focus();
+    }
+    function cerrarPasos() { modal.hidden = true; ocultarSugerencia(true); }
+    document.getElementById('btnCerrarInstalar').addEventListener('click', cerrarPasos);
+    document.getElementById('btnEntendido').addEventListener('click', cerrarPasos);
+    modal.addEventListener('click', function (e) { if (e.target === modal) cerrarPasos(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) cerrarPasos(); });
+
+    /* ---------- Arranque ---------- */
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { }); });
+    }
+    try { history.replaceState({ pgi: 'portal' }, ''); } catch (e) { }
+    cargar(urlInicial());
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Portal de Gestión Interna – Inclusión Social",
+  "short_name": "Portal SENA",
+  "description": "Portal de Gestión Interna · Inclusión Social, Atención a Población Víctima y Grupos Étnicos en Urabá (SENA Apartadó).",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#39a900",
+  "categories": ["productivity", "education"],
+  "icons": [
+    { "src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "iconos/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

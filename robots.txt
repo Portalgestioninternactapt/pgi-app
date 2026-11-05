@@ -1,0 +1,16 @@
+# Los buscadores no indexan la app, pero WhatsApp, correo y redes
+# sí pueden leer la página para armar la vista previa del enlace.
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: WhatsApp
+User-agent: Twitterbot
+User-agent: LinkedInBot
+User-agent: Slackbot
+User-agent: TelegramBot
+User-agent: Discordbot
+User-agent: SkypeUriPreview
+User-agent: Microsoft Preview
+Allow: /
+
+User-agent: *
+Disallow: /
