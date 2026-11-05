@@ -181,7 +181,7 @@
      URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
      Si el portal cambia de implementación, cámbiala aquí también. */
   var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
-  var VERSION_ENVOLTORIO = '2026-11-05g';
+  var VERSION_ENVOLTORIO = '2026-11-05h';
   /* ====================================================== */
 
   (function () {
@@ -202,21 +202,22 @@
     var capaZ = 5;
     var avivando = null;
 
-    /* Android (y a veces iPhone) no actualiza en pantalla lo que dibuja la página de Google hasta que
-       se toca la pantalla. Mientras una página carga y unos segundos después, la app le hace un cambio
-       invisible al marco cada 200 ms: eso obliga al celular a volver a pintar y la página aparece sola. */
+    /* Android (y a veces iPhone) no muestra lo nuevo que dibuja la página de Google hasta que se toca la
+       pantalla. Mientras una página carga, y unos segundos después, la app le cambia el alto 1 píxel por un
+       instante cada segundo: así el celular tiene que pedirle a la página una imagen nueva y se ve sola. */
+    function sacudir(m) {
+      if (!m || !m.isConnected) return;
+      m.style.height = 'calc(100% - 1px)';
+      setTimeout(function () { m.style.height = '100%'; }, 80);
+    }
     function avivar(ms) {
       var fin = Date.now() + ms;
       if (avivando) { avivando.fin = Math.max(avivando.fin, fin); return; }
-      var par = false;
       avivando = { fin: fin, t: setInterval(function () {
-        par = !par;
-        [marco, siguiente].forEach(function (m) {
-          if (m) m.style.transform = par ? 'translateZ(0)' : 'translateZ(0) scale(1)';
-        });
-        document.body.style.backgroundPosition = par ? '0 0' : '0 1px';
+        sacudir(marco);
+        sacudir(siguiente);
         if (Date.now() > avivando.fin) { clearInterval(avivando.t); avivando = null; }
-      }, 200) };
+      }, 1000) };
     }
 
     /* ---------- Diagnóstico en pantalla (solo si se abre una vez con ?diag=1; ?diag=0 lo quita) ---------- */
@@ -312,7 +313,10 @@
       avisoLento.hidden = true;
       terminarProgreso();
       capaInicio.hidden = true;
-      avivar(8000);
+      avivar(12000);
+      enfocar(f);
+      [150, 400, 700].forEach(function (ms) { setTimeout(function () { sacudir(f); }, ms); });
+      setTimeout(function () { enfocar(f); }, 1500);
       if (f.esHerramienta) {
         /* La entrada para el botón atrás se agrega cuando la herramienta ya cargó: así queda
            después de cualquier entrada interna que deje Google al armar la página. */
@@ -328,6 +332,14 @@
         history.go(-k);
       }
       programarSugerencia();
+    }
+
+    /* Android deja la página de Google detenida en «Cargando…» hasta que recibe el foco (antes había que
+       tocar la pantalla para dárselo). La app le pasa el foco sola apenas carga y al volver a la app. */
+    function enfocar(f) {
+      if (!f || f !== marco || document.activeElement === f) return;
+      if (!modal.hidden || !sugerencia.hidden) return;
+      try { f.focus(); diag('foco al portal ' + (document.activeElement === f ? 'ok' : 'no')); } catch (e) { }
     }
 
     function navegar(url) {
@@ -372,6 +384,7 @@
       var d = ev.data;
       if (!d || typeof d !== 'object' || typeof d.portalSena !== 'string') return;
       if (!vieneDelPortal(ev)) return;
+      if (d.portalSena === 'diag') { if (typeof d.txt === 'string') diag(d.txt.slice(0, 120)); return; }
       avivar(6000);
       diag('mensaje ' + d.portalSena);
       if (d.portalSena === 'hola') {
@@ -388,7 +401,7 @@
       barraRed.hidden = navigator.onLine !== false;
     }
     window.addEventListener('offline', estadoRed);
-    document.addEventListener('visibilitychange', function () { diag('visibilidad ' + document.visibilityState); if (!document.hidden) avivar(4000); });
+    document.addEventListener('visibilitychange', function () { diag('visibilidad ' + document.visibilityState); if (!document.hidden) { avivar(4000); enfocar(marco); } });
     window.addEventListener('blur', function () { diag('foco en la página'); });
     window.addEventListener('pageshow', function () { avivar(4000); });
     window.addEventListener('online', function () {

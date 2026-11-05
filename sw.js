@@ -3,7 +3,7 @@
    para que la app abra rápido y pueda mostrar el aviso de «sin conexión».
    El portal y las herramientas (script.google.com) NUNCA se guardan: siempre se cargan en línea.
    Cuando cambies algo de esta carpeta, sube VERSION para que los celulares descarten la copia anterior. */
-var VERSION = 'pgi-envoltorio-2026-11-05g';
+var VERSION = 'pgi-envoltorio-2026-11-05h';
 var ARCHIVOS = [
   './',
   './index.html',
