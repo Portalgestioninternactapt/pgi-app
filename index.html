@@ -43,13 +43,14 @@
                  overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: var(--texto); }
     /* iPhone: sin el «rebote» de la página de la app; el desplazamiento lo hace cada herramienta por dentro. */
-    .marco { position: fixed; inset: 0; z-index: 2; width: 100%; height: 100%; border: 0; display: block; background: var(--fondo); }
-    /* La página nueva carga DEBAJO de la anterior (tapada, pero visible para el navegador): si se ocultara,
-       Android y iPhone frenan su carga y solo terminaba al tocar la pantalla. La anterior sigue a la vista,
-       con su propia animación, hasta que la nueva está lista. */
-    .marco.cargando { z-index: 1; pointer-events: none; }
+    /* La página nueva se pone ENCIMA de la anterior desde el primer momento, con fondo transparente:
+       mientras Google no dibuja nada se sigue viendo lo de abajo (la animación del portal o la pantalla
+       de inicio) y, apenas dibuja, se ve la página nueva. Nunca se tapa ni se oculta un marco: Android
+       e iPhone dejan de dibujar los marcos tapados u ocultos y la pantalla se quedaba congelada hasta
+       tocarla. */
+    .marco { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; border: 0; display: block; background: transparent; }
 
-    .capa { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    .capa { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center;
             justify-content: center; text-align: center; padding: 24px; background: var(--fondo);
             transition: opacity .25s ease; }
     .capa[hidden] { display: none; }
@@ -150,15 +151,11 @@
     <h1>Portal de Gestión Interna</h1>
     <p>Inclusión Social · Complejo Tecnológico Agroindustrial, Pecuario y Turístico – Apartadó</p>
     <div class="puntos" aria-label="Cargando"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="ayuda" id="ayudaLenta" hidden>
-      ¿Está tardando mucho?
-      <button type="button" class="enlace" id="btnReintentar">Volver a intentar</button>
-    </div>
   </div>
 
   <div class="lento" id="avisoLento" role="status" hidden>
     <span>Está tardando más de lo normal.</span>
-    <button type="button" class="enlace" id="btnVolverPortal">Volver al portal</button>
+    <button type="button" class="enlace" id="btnVolverPortal">Volver a intentar</button>
   </div>
 
   <div class="sugerencia" id="sugerencia" role="region" aria-label="Instalar la app" hidden>
@@ -184,7 +181,7 @@
      URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
      Si el portal cambia de implementación, cámbiala aquí también. */
   var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
-  var VERSION_ENVOLTORIO = '2026-11-05d';
+  var VERSION_ENVOLTORIO = '2026-11-05f';
   /* ====================================================== */
 
   (function () {
@@ -197,11 +194,12 @@
     var avisoLento = document.getElementById('avisoLento');
     var PERMISOS = 'camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; fullscreen; autoplay; display-capture';
     var marco = null;        /* página que se ve */
-    var siguiente = null;    /* página que está cargando detrás */
+    var siguiente = null;    /* página que está cargando (encima, transparente) */
     var urlSiguiente = '';
     var cargoAlgunaVez = false;
     var enHerramienta = false;
     var temporizadorLento = null;
+    var capaZ = 5;
     var entradasAtras = 0;   /* entradas «herramienta» que la app agregó al historial */
     var ignorarPop = 0;
 
@@ -238,12 +236,13 @@
       avisoLento.hidden = true;
       clearTimeout(temporizadorLento);
       temporizadorLento = setTimeout(function () {
-        if (!cargoAlgunaVez) document.getElementById('ayudaLenta').hidden = false;
-        else avisoLento.hidden = false;
+        document.getElementById('btnVolverPortal').textContent = marco ? 'Volver al portal' : 'Volver a intentar';
+        avisoLento.hidden = false;
       }, 25000);
 
       var f = document.createElement('iframe');
-      f.className = 'marco' + (marco ? ' cargando' : '');
+      f.className = 'marco';
+      f.style.zIndex = String(++capaZ);
       f.title = 'Portal de Gestión Interna';
       f.setAttribute('allow', PERMISOS);
       f.setAttribute('allowfullscreen', '');
@@ -251,7 +250,7 @@
       f.esHerramienta = !esPortal(url);
       f.addEventListener('load', function () { alCargar(f); });
       f.src = url;
-      document.body.insertBefore(f, document.body.firstChild);
+      document.body.appendChild(f);
       siguiente = f;
     }
 
@@ -261,15 +260,11 @@
       urlSiguiente = '';
       if (marco && marco !== f) marco.remove();
       marco = f;
-      f.classList.remove('cargando');
       cargoAlgunaVez = true;
       clearTimeout(temporizadorLento);
       avisoLento.hidden = true;
       terminarProgreso();
-      if (!capaInicio.hidden) {
-        capaInicio.classList.add('saliendo');
-        setTimeout(function () { capaInicio.hidden = true; }, 260);
-      }
+      capaInicio.hidden = true;
       if (f.esHerramienta) {
         /* La entrada para el botón atrás se agrega cuando la herramienta ya cargó: así queda
            después de cualquier entrada interna que deje Google al armar la página. */
@@ -303,15 +298,15 @@
       /* Se quita la herramienta de una vez (y con ella su historial interno) y se abre el portal nuevo. */
       if (siguiente) { siguiente.remove(); siguiente = null; }
       if (marco) { marco.remove(); marco = null; }
-      capaInicio.classList.remove('saliendo');
       capaInicio.hidden = false;
       cargar(URL_PORTAL, true);
       if (extra > 0) { ignorarPop++; history.go(-extra); }
     });
 
     document.getElementById('btnVolverPortal').addEventListener('click', function () {
+      var inicio = !marco;
       enHerramienta = false;
-      cargar(URL_PORTAL, true);
+      cargar(inicio ? urlInicial() : URL_PORTAL, true);
     });
 
     /* Mensajes de las páginas del portal (Menu_cliente.html y la página de «Acceso restringido»). */
@@ -336,10 +331,6 @@
       }
     });
 
-    document.getElementById('btnReintentar').addEventListener('click', function () {
-      document.getElementById('ayudaLenta').hidden = true;
-      cargar(urlInicial(), true);
-    });
 
     /* ---------- Sin conexión ---------- */
     var barraRed = document.getElementById('barraRed');
