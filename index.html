@@ -8,6 +8,10 @@
   <title>Portal de Gestión Interna – Inclusión Social</title>
   <meta name="description" content="Portal de Gestión Interna · Inclusión Social (SENA Apartadó).">
 
+  <!-- La conexión con Google se abre mientras se lee esta página: el portal empieza a cargar antes. -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+
   <!-- Vista previa al compartir el enlace (WhatsApp, correo, Teams, Facebook). Las direcciones deben ser completas. -->
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_CO">
@@ -33,8 +37,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Portal SENA">
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
-        integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD" crossorigin="anonymous">
+  <!-- Esta página no espera ninguna hoja de estilos de otro sitio: sus íconos van dibujados aquí mismo (SVG).
+       Antes esperaba la hoja de Bootstrap Icons y, si esa descarga se demoraba, el portal ni siquiera empezaba a cargar. -->
   <style>
     :root { --verde: #39a900; --verde-oscuro: #2d8500; --verde-suave: #eef9e6; --verde-borde: #cfe8bf;
             --texto: #2c3e50; --suave: #6c757d; --fondo: #f8fafc; }
@@ -45,10 +49,13 @@
     /* iPhone: sin el «rebote» de la página de la app; el desplazamiento lo hace cada herramienta por dentro. */
     /* La página nueva se pone ENCIMA de la anterior desde el primer momento, con fondo transparente:
        mientras Google no dibuja nada se sigue viendo lo de abajo (la animación del portal o la pantalla
-       de inicio) y, apenas dibuja, se ve la página nueva. Nunca se tapa ni se oculta un marco: Android
-       e iPhone dejan de dibujar los marcos tapados u ocultos y la pantalla se quedaba congelada hasta
-       tocarla. */
+       de inicio) y, apenas la página avisa que ya está lista, pasa a ser la que se ve. Nunca se oculta un
+       marco: Android e iPhone dejan de dibujar los marcos ocultos. El portal se queda abierto DEBAJO de la
+       herramienta, así que volver a él es inmediato (no se vuelve a cargar). */
     .marco { position: absolute; top: 0; left: 0; z-index: 5; width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+
+    .ic { width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.125em; fill: none; stroke: currentColor;
+          stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
     .capa { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center;
             justify-content: center; text-align: center; padding: 24px; background: var(--fondo);
@@ -137,14 +144,14 @@
                   border-radius: 7px; background: #f1f3f5; color: #0a66d8; font-size: 1rem; vertical-align: -6px; margin: 0 2px; }
     .nota { display: flex; gap: 8px; background: #f8fafc; border-left: 4px solid var(--verde); border-radius: 8px;
             padding: 9px 12px; font-size: .84rem; color: var(--suave); margin-bottom: 12px; }
-    .nota i { color: var(--verde); }
+    .nota .ic { color: var(--verde); margin-top: 3px; }
     .caja-pie { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; }
     @media (prefers-reduced-motion: reduce) { .sugerencia, .capa { animation: none; transition: none; } }
   </style>
 </head>
 <body>
   <div class="progreso" id="progreso" aria-hidden="true"></div>
-  <div class="barra-red" id="barraRed" role="status" hidden><i class="bi bi-wifi-off"></i> Sin conexión a internet. El portal necesita internet para funcionar.</div>
+  <div class="barra-red" id="barraRed" role="status" hidden><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6a9 9 0 0 1 12 0M4.3 8.6a5.5 5.5 0 0 1 7.4 0M8 12h.01M2 2l12 12"/></svg> Sin conexión a internet. El portal necesita internet para funcionar.</div>
 
   <div class="capa" id="capaInicio" role="status" aria-live="polite">
     <img src="iconos/icono-192.png" alt="">
@@ -158,21 +165,23 @@
     <button type="button" class="enlace" id="btnVolverPortal">Volver a intentar</button>
   </div>
 
+  <div class="lento" id="avisoSalir" role="status" hidden><span>Presiona «atrás» otra vez para salir.</span></div>
+
   <div class="sugerencia" id="sugerencia" role="region" aria-label="Instalar la app" hidden>
     <img src="iconos/icono-192.png" alt="">
     <div class="txt"><b>Instala el portal</b><span id="sugerenciaTexto">Ábrelo como una app, a pantalla completa.</span></div>
-    <button type="button" class="btn" id="btnInstalar"><i class="bi bi-download"></i> Instalar</button>
-    <button type="button" class="cerrar" id="btnNoInstalar" aria-label="Ahora no" title="Ahora no"><i class="bi bi-x-lg"></i></button>
+    <button type="button" class="btn" id="btnInstalar"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M2.5 13.5h11"/></svg> Instalar</button>
+    <button type="button" class="cerrar" id="btnNoInstalar" aria-label="Ahora no" title="Ahora no"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3 3 13"/></svg></button>
   </div>
 
   <div class="modal" id="modalInstalar" hidden>
     <div class="caja" role="dialog" aria-modal="true" aria-labelledby="tituloInstalar">
       <div class="caja-cab">
-        <h2 id="tituloInstalar"><i class="bi bi-phone"></i> Instalar en mi celular</h2>
-        <button type="button" class="cerrar" id="btnCerrarInstalar" aria-label="Cerrar"><i class="bi bi-x-lg"></i></button>
+        <h2 id="tituloInstalar"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="1.5" width="8" height="13" rx="1.6"/><path d="M7.2 12.3h1.6"/></svg> Instalar en mi celular</h2>
+        <button type="button" class="cerrar" id="btnCerrarInstalar" aria-label="Cerrar"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3 3 13"/></svg></button>
       </div>
       <div class="caja-cuerpo" id="cuerpoInstalar"></div>
-      <div class="caja-pie"><button type="button" class="btn" id="btnEntendido"><i class="bi bi-check2-circle"></i> Entendido</button></div>
+      <div class="caja-pie"><button type="button" class="btn" id="btnEntendido"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"/></svg> Entendido</button></div>
     </div>
   </div>
 
@@ -181,43 +190,65 @@
      URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
      Si el portal cambia de implementación, cámbiala aquí también. */
   var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
-  var VERSION_ENVOLTORIO = '2026-11-05h';
+  var VERSION_ENVOLTORIO = '2026-11-09a';
+  /* true  = el portal se queda abierto debajo de la herramienta y volver a él es inmediato (recomendado).
+     false = como antes: el portal se cierra al abrir una herramienta y se vuelve a cargar al regresar.
+     Solo funciona con el Menu_cliente.html de noviembre 9 de 2026 o posterior en el portal; con uno más
+     viejo la app se comporta sola como «false». */
+  var MANTENER_PORTAL = true;
   /* ====================================================== */
 
   (function () {
-    var RE_APPS = /^https:\/\/script\.google\.com\/(a\/[^\/?#]+\/)?macros\/s\/[\w-]+\/(exec|dev)(\?[^#\s]*)?$/;
+    var RE_APPS = /^https:\/\/script\.google\.com\/(a\/[^\/?#]+\/macros\/|a\/macros\/[^\/?#]+\/|macros\/)s\/[\w-]+\/(exec|dev)(\?[^#\s]*)?$/;
     var RE_ORIGEN_GOOGLE = /^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/;
     var K_NO_INSTALAR = 'pgi_no_instalar_hasta';
+    var FONDO = '#f8fafc';
 
     var capaInicio = document.getElementById('capaInicio');
     var progreso = document.getElementById('progreso');
     var avisoLento = document.getElementById('avisoLento');
+    var avisoSalir = document.getElementById('avisoSalir');
     var PERMISOS = 'camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; fullscreen; autoplay; display-capture';
-    var marco = null;        /* página que se ve */
+    var marco = null;        /* página que se ve (el portal o una herramienta) */
     var siguiente = null;    /* página que está cargando (encima, transparente) */
+    var portal = null;       /* marco del portal; se conserva debajo mientras se usa una herramienta */
     var urlSiguiente = '';
     var cargoAlgunaVez = false;
     var enHerramienta = false;
     var temporizadorLento = null;
     var capaZ = 5;
     var avivando = null;
+    var serieVolver = 0;
 
     /* Android (y a veces iPhone) no muestra lo nuevo que dibuja la página de Google hasta que se toca la
-       pantalla. Mientras una página carga, y unos segundos después, la app le cambia el alto 1 píxel por un
-       instante cada segundo: así el celular tiene que pedirle a la página una imagen nueva y se ve sola. */
+       pantalla. Mientras una página NO ha confirmado que ya se dibujó, la app le cambia el alto 1 píxel por
+       un instante cada segundo: así el celular tiene que pedirle una imagen nueva. Apenas la página avisa
+       que ya se dibujó («pintado») se le dan tres toques más y se la deja quieta: cada toque le llega a la
+       página como un cambio de tamaño, y seguir dándolos 12 segundos hacía que las herramientas pesadas
+       se sintieran pegadas justo después de abrir. */
     function sacudir(m) {
       if (!m || !m.isConnected) return;
       m.style.height = 'calc(100% - 1px)';
       setTimeout(function () { m.style.height = '100%'; }, 80);
     }
-    function avivar(ms) {
+    function avivar(ms, todos) {
       var fin = Date.now() + ms;
-      if (avivando) { avivando.fin = Math.max(avivando.fin, fin); return; }
-      avivando = { fin: fin, t: setInterval(function () {
-        sacudir(marco);
-        sacudir(siguiente);
-        if (Date.now() > avivando.fin) { clearInterval(avivando.t); avivando = null; }
+      if (avivando) {
+        avivando.fin = Math.max(avivando.fin, fin);
+        if (todos) avivando.finTodos = Math.max(avivando.finTodos, fin);
+        return;
+      }
+      avivando = { fin: fin, finTodos: todos ? fin : 0, t: setInterval(function () {
+        var a = avivando, ahora = Date.now(), todosAhora = ahora <= a.finTodos;
+        if (marco && (todosAhora || !marco.pintado)) sacudir(marco);
+        if (siguiente && (todosAhora || !siguiente.pintado)) sacudir(siguiente);
+        if (ahora > a.fin) { clearInterval(a.t); avivando = null; }
       }, 1000) };
+    }
+    function confirmarPintado(f) {
+      if (f.pintado) return;
+      f.pintado = true;
+      [250, 900, 2200].forEach(function (ms) { setTimeout(function () { sacudir(f); }, ms); });
     }
 
     /* ---------- Diagnóstico en pantalla (solo si se abre una vez con ?diag=1; ?diag=0 lo quita) ---------- */
@@ -245,9 +276,6 @@
       setInterval(function () { diag('cuadros/s=' + (cuadros - ultimo) + ' vis=' + document.visibilityState); ultimo = cuadros; }, 2000);
     }
 
-    var entradasAtras = 0;   /* entradas «herramienta» que la app agregó al historial */
-    var ignorarPop = 0;
-
     function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
     function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
 
@@ -266,16 +294,52 @@
       progreso.classList.add('activo');
     }
     function terminarProgreso() {
+      if (!progreso.classList.contains('activo')) return;
       progreso.classList.add('fin');
       setTimeout(function () { progreso.classList.remove('activo', 'fin'); }, 700);
     }
 
-    /* Cada página (portal o herramienta) se abre en un marco NUEVO, igual que la primera vez.
-       Así no queda nada de la página anterior (ni su historial interno), que era lo que dejaba
-       pegado el regreso al portal y hacía fallar «verificar tu sesión». */
+    function quitar(f) { if (f) { try { f.remove(); } catch (e) { } } }
+
+    /* Mensaje de la app a una de sus páginas (solo a la ventana y al origen que ya se presentaron). */
+    function decir(f, msg) {
+      if (!f || !f.ventana || !f.origen) return false;
+      try { f.ventana.postMessage(msg, f.origen); return true; } catch (e) { return false; }
+    }
+
+    function portalVivo() {
+      return !!(MANTENER_PORTAL && portal && portal.isConnected && portal.v >= 2 && portal.ventana && portal.listo);
+    }
+
+    /* El portal en reposo: sigue abierto debajo de la herramienta, pero no recibe el teclado ni lo anuncia
+       el lector de pantalla, y se le pide que quite su animación de «Abriendo herramienta». */
+    function reposar(f, si) {
+      if (!f) return;
+      if (si) {
+        f.setAttribute('aria-hidden', 'true');
+        f.setAttribute('tabindex', '-1');
+        try { f.inert = true; } catch (e) { }
+        decir(f, { portalSena: 'reposo' });
+      } else {
+        f.removeAttribute('aria-hidden');
+        f.removeAttribute('tabindex');
+        try { f.inert = false; } catch (e) { }
+      }
+    }
+
+    function cancelarCarga() {
+      if (siguiente) { quitar(siguiente); siguiente = null; }
+      urlSiguiente = '';
+      clearTimeout(temporizadorLento);
+      avisoLento.hidden = true;
+      terminarProgreso();
+    }
+
+    /* Cada página nueva (una herramienta, o el portal cuando hay que cargarlo) se abre en un marco NUEVO,
+       igual que la primera vez. Así no queda nada de la página anterior ni de su historial interno. */
     function cargar(url, forzar) {
       if (siguiente && url === urlSiguiente && !forzar) return;
-      if (siguiente) { siguiente.remove(); siguiente = null; }
+      if (siguiente) { quitar(siguiente); siguiente = null; }
       urlSiguiente = url;
       empezarProgreso();
       avisoLento.hidden = true;
@@ -293,6 +357,9 @@
       f.setAttribute('allowfullscreen', '');
       f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
       f.esHerramienta = !esPortal(url);
+      f.v = 0;               /* versión del saludo de la página (2 = sabe avisar «listo») */
+      f.listo = false;
+      f.pintado = false;
       f.addEventListener('load', function () { alCargar(f); });
       f.src = url;
       document.body.appendChild(f);
@@ -301,96 +368,171 @@
       diag('cargar ' + (f.esHerramienta ? 'herramienta' : 'portal'));
     }
 
+    /* El marco terminó de cargar la envoltura de Google. Las páginas nuevas avisan ellas mismas cuando ya
+       tienen su contenido («listo») y ahí se muestran; aquí solo se resuelven las que no avisan: las de un
+       Menu_cliente.html anterior o la de «Acceso restringido» (se muestran enseguida, como antes) y las que
+       saludaron pero no alcanzaron a avisar (se muestran a los 3,5 segundos pase lo que pase). */
     function alCargar(f) {
       diag('load ' + (f === siguiente ? 'nuevo' : 'otro'));
       if (f !== siguiente) return;
+      setTimeout(function () {
+        if (f !== siguiente) return;
+        if (f.v >= 2) setTimeout(function () { mostrar(f); }, 3500);
+        else mostrar(f);
+      }, 350);
+    }
+
+    /* La página que estaba cargando pasa a ser la que se ve. */
+    function mostrar(f) {
+      if (f !== siguiente) return;
       siguiente = null;
       urlSiguiente = '';
-      if (marco && marco !== f) marco.remove();
+      var anterior = marco;
       marco = f;
+      f.style.background = FONDO;
+      if (f.esHerramienta) {
+        if (anterior && anterior !== portal) quitar(anterior);
+        if (portal && !portalVivo()) { quitar(portal); portal = null; }
+        if (portal) reposar(portal, true);
+      } else {
+        if (anterior && anterior !== f) quitar(anterior);
+        if (portal && portal !== f) quitar(portal);
+        portal = f;
+      }
       cargoAlgunaVez = true;
       clearTimeout(temporizadorLento);
       avisoLento.hidden = true;
       terminarProgreso();
       capaInicio.hidden = true;
-      avivar(12000);
+      diag('mostrar ' + (f.esHerramienta ? 'herramienta' : 'portal') + (f.pintado ? ' pintado' : ''));
+      if (!f.pintado) {
+        avivar(12000);
+        [150, 400, 700].forEach(function (ms) { setTimeout(function () { if (!f.pintado) sacudir(f); }, ms); });
+      }
       enfocar(f);
-      [150, 400, 700].forEach(function (ms) { setTimeout(function () { sacudir(f); }, ms); });
       setTimeout(function () { enfocar(f); }, 1500);
       if (f.esHerramienta) {
-        /* La entrada para el botón atrás se agrega cuando la herramienta ya cargó: así queda
-           después de cualquier entrada interna que deje Google al armar la página. */
-        setTimeout(function () {
-          if (marco !== f || !enHerramienta) return;
-          try { history.pushState({ pgi: 'herramienta' }, ''); entradasAtras++; } catch (e) { }
-        }, 1200);
-      } else if (entradasAtras > 0) {
-        /* De vuelta en el portal: se quitan las entradas de las herramientas para que «atrás» no se acumule. */
-        var k = entradasAtras;
-        entradasAtras = 0;
-        ignorarPop++;
-        history.go(-k);
+        setTimeout(function () { if (marco === f && enHerramienta) ponerGuardia(); }, 300);
       }
       programarSugerencia();
     }
 
     /* Android deja la página de Google detenida en «Cargando…» hasta que recibe el foco (antes había que
-       tocar la pantalla para dárselo). La app le pasa el foco sola apenas carga y al volver a la app. */
+       tocar la pantalla para dárselo). La app le pasa el foco sola apenas se muestra y al volver a la app. */
     function enfocar(f) {
       if (!f || f !== marco || document.activeElement === f) return;
       if (!modal.hidden || !sugerencia.hidden) return;
-      try { f.focus(); diag('foco al portal ' + (document.activeElement === f ? 'ok' : 'no')); } catch (e) { }
+      try { f.focus(); diag('foco ' + (document.activeElement === f ? 'ok' : 'no')); } catch (e) { }
+    }
+
+    /* Volver al portal. Si sigue abierto debajo de la herramienta, es inmediato: se quita la herramienta y
+       se le avisa al portal (que puede traer el encargo de abrir otra herramienta). Si el portal no responde
+       en 3 segundos, o no estaba abierto, se carga de nuevo como antes. */
+    function irAlPortal(url) {
+      var abrir = '', tx = '';
+      try {
+        var q = new URL(url).searchParams;
+        abrir = String(q.get('abrir') || '').toLowerCase();
+        tx = String(q.get('tx') || '');
+      } catch (e) { }
+      if (!/^[a-z0-9-]{1,60}$/.test(abrir)) abrir = '';
+      if (!/^-?[01]$/.test(tx)) tx = '';
+      enHerramienta = false;
+      if (!portalVivo()) { cargar(url, true); return; }
+
+      cancelarCarga();
+      if (marco && marco !== portal) quitar(marco);
+      marco = portal;
+      reposar(portal, false);
+      capaInicio.hidden = true;
+      var p = portal, n = ++serieVolver;
+      p.respondio = false;
+      decir(p, { portalSena: 'volver', abrir: abrir, tx: tx });
+      avivar(3000, true);
+      sacudir(p);
+      enfocar(p);
+      diag('portal de vuelta' + (abrir ? ' → ' + abrir : ''));
+      setTimeout(function () {
+        if (n !== serieVolver || marco !== p || p.respondio || siguiente) return;
+        diag('el portal no respondió: se carga de nuevo');
+        cargar(url, true);
+      }, 3000);
     }
 
     function navegar(url) {
       ocultarSugerencia(false);
-      enHerramienta = !esPortal(url);
+      if (esPortal(url)) { irAlPortal(url); return; }
+      enHerramienta = true;
       cargar(url);
     }
 
-    /* Botón «atrás» de Android dentro de una herramienta: vuelve al portal en vez de cerrar la app. */
-    window.addEventListener('popstate', function () {
-      if (ignorarPop > 0) { ignorarPop--; return; }
-      if (!enHerramienta) return;
-      enHerramienta = false;
-      var extra = Math.max(0, entradasAtras - 1);
-      entradasAtras = 0;
-      /* Se quita la herramienta de una vez (y con ella su historial interno) y se abre el portal nuevo. */
-      if (siguiente) { siguiente.remove(); siguiente = null; }
-      if (marco) { marco.remove(); marco = null; }
-      capaInicio.hidden = false;
-      cargar(URL_PORTAL, true);
-      if (extra > 0) { ignorarPop++; history.go(-extra); }
+    /* ---------- Botón «atrás» ----------
+       La app deja UNA sola marca en el historial mientras hay una herramienta abierta. «Atrás» dentro de una
+       herramienta gasta esa marca y vuelve al portal (al instante). La app nunca mueve el historial por su
+       cuenta (ni history.back ni history.go): eso era lo que a veces dejaba el regreso cargando, porque
+       también devolvía las páginas internas de Google. */
+    function ponerGuardia() {
+      try {
+        if (history.state && history.state.pgi === 'h') return;
+        history.pushState({ pgi: 'h' }, '');
+      } catch (e) { }
+    }
+    var temporizadorSalir = null;
+    window.addEventListener('popstate', function (ev) {
+      if (ev.state && ev.state.pgi === 'h') return;      /* «adelante» en un navegador de escritorio */
+      if (enHerramienta) { irAlPortal(URL_PORTAL); return; }
+      /* En el portal quedaba la marca de una herramienta que se cerró desde el menú: se avisa que el
+         siguiente «atrás» ya sale de la app. */
+      avisoSalir.hidden = false;
+      clearTimeout(temporizadorSalir);
+      temporizadorSalir = setTimeout(function () { avisoSalir.hidden = true; }, 2500);
     });
 
     document.getElementById('btnVolverPortal').addEventListener('click', function () {
-      var inicio = !marco;
-      enHerramienta = false;
-      cargar(inicio ? urlInicial() : URL_PORTAL, true);
+      if (marco || portal) irAlPortal(URL_PORTAL);
+      else { enHerramienta = false; cargar(urlInicial(), true); }
     });
 
-    /* Mensajes de las páginas del portal (Menu_cliente.html y la página de «Acceso restringido»). */
-    function vieneDelPortal(ev) {
-      if (!RE_ORIGEN_GOOGLE.test(ev.origin)) return false;
+    /* Mensajes de las páginas del portal (Menu_cliente.html y la página de «Acceso restringido»).
+       Solo se aceptan de los marcos que la app abrió, y solo si vienen de una página de Google. */
+    function marcoDe(ev) {
+      if (!RE_ORIGEN_GOOGLE.test(ev.origin)) return null;
+      var lista = [siguiente, marco, portal];
       var w = ev.source;
       for (var i = 0; i < 5 && w; i++) {
-        if ((marco && w === marco.contentWindow) || (siguiente && w === siguiente.contentWindow)) return true;
-        try { if (w === w.parent) break; w = w.parent; } catch (e) { return false; }
+        for (var j = 0; j < lista.length; j++) {
+          if (lista[j] && lista[j].contentWindow === w) return lista[j];
+        }
+        try { if (w === w.parent) break; w = w.parent; } catch (e) { return null; }
       }
-      return false;
+      return null;
     }
 
     window.addEventListener('message', function (ev) {
       var d = ev.data;
       if (!d || typeof d !== 'object' || typeof d.portalSena !== 'string') return;
-      if (!vieneDelPortal(ev)) return;
+      var f = marcoDe(ev);
+      if (!f) return;
       if (d.portalSena === 'diag') { if (typeof d.txt === 'string') diag(d.txt.slice(0, 120)); return; }
-      avivar(6000);
       diag('mensaje ' + d.portalSena);
       if (d.portalSena === 'hola') {
-        ev.source.postMessage({ portalSena: 'envoltorio', v: 1, version: VERSION_ENVOLTORIO, instalada: estaInstalada() }, ev.origin);
+        f.v = Number(d.v) || 1;
+        f.ventana = ev.source;
+        f.origen = ev.origin;
+        ev.source.postMessage({ portalSena: 'envoltorio', v: 2, version: VERSION_ENVOLTORIO, instalada: estaInstalada(), diag: DIAG }, ev.origin);
+      } else if (d.portalSena === 'listo') {
+        f.ventana = ev.source;
+        f.origen = ev.origin;
+        if (f.v < 2) f.v = 2;
+        f.listo = true;
+        if (d.pintado === true) confirmarPintado(f);
+        mostrar(f);
+      } else if (d.portalSena === 'pintado') {
+        confirmarPintado(f);
+      } else if (d.portalSena === 'pong') {
+        f.respondio = true;
       } else if (d.portalSena === 'navegar' && typeof d.url === 'string' && RE_APPS.test(d.url)) {
-        navegar(d.url);
+        if (f === marco) navegar(d.url);      /* solo la página que se está viendo puede pedir un cambio */
       }
     });
 
@@ -401,9 +543,12 @@
       barraRed.hidden = navigator.onLine !== false;
     }
     window.addEventListener('offline', estadoRed);
-    document.addEventListener('visibilitychange', function () { diag('visibilidad ' + document.visibilityState); if (!document.hidden) { avivar(4000); enfocar(marco); } });
+    document.addEventListener('visibilitychange', function () {
+      diag('visibilidad ' + document.visibilityState);
+      if (!document.hidden) { avivar(4000, true); enfocar(marco); }
+    });
     window.addEventListener('blur', function () { diag('foco en la página'); });
-    window.addEventListener('pageshow', function () { avivar(4000); });
+    window.addEventListener('pageshow', function () { avivar(4000, true); });
     window.addEventListener('online', function () {
       estadoRed();
       if (!cargoAlgunaVez) cargar(urlInicial());
@@ -469,12 +614,13 @@
     });
 
     var modal = document.getElementById('modalInstalar');
-    /* Íconos de los pasos dentro del archivo (Bootstrap Icons, MIT): se ven aunque no cargue la hoja de íconos. */
+    /* Íconos de los pasos dentro del archivo (Bootstrap Icons, MIT). */
     var SVG = {
       compartir: 'M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1zM7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708z',
       agregar: 'M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4',
       menu: 'M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0'
     };
+    var SVG_BOMBILLA = '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 12.5h4M6.6 14.5h2.8M8 1.5a4.5 4.5 0 0 0-2.5 8.2V11h5V9.7A4.5 4.5 0 0 0 8 1.5z"/></svg>';
     function ico(nombre) {
       return '<span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="' + SVG[nombre] + '"/></svg></span>';
     }
@@ -504,7 +650,7 @@
       c.appendChild(ol);
       var n = document.createElement('div');
       n.className = 'nota';
-      n.innerHTML = '<i class="bi bi-lightbulb"></i>';
+      n.innerHTML = SVG_BOMBILLA;
       n.appendChild(Object.assign(document.createElement('span'), { textContent: nota }));
       c.appendChild(n);
       modal.hidden = false;
@@ -517,11 +663,11 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) cerrarPasos(); });
 
     /* ---------- Arranque ---------- */
+    try { history.replaceState({ pgi: 'portal' }, ''); } catch (e) { }
+    cargar(urlInicial());
     if ('serviceWorker' in navigator && window.isSecureContext) {
       window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { }); });
     }
-    try { history.replaceState({ pgi: 'portal' }, ''); } catch (e) { }
-    cargar(urlInicial());
   })();
 </script>
 </body>
