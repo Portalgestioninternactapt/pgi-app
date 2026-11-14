@@ -65,8 +65,10 @@
     .lento { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 22; background: #fff;
              border-radius: 12px; border-left: 6px solid var(--verde); box-shadow: 0 10px 26px rgba(0, 0, 0, .16);
              padding: 10px 16px; font-size: .85rem; color: var(--suave); display: flex; gap: 10px; align-items: center;
-             max-width: calc(100% - 20px); }
+             width: max-content; max-width: calc(100% - 20px); }
+    .lento .enlace { white-space: nowrap; }
     .lento[hidden] { display: none; }
+    .lento .cerrar { width: 30px; height: 30px; margin: -4px -8px -4px 0; font-size: .95rem; }
     .capa img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 26px rgba(57, 169, 0, .28); margin-bottom: 18px; }
     .capa h1 { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
     .capa p { font-size: .9rem; color: var(--suave); margin: 0 0 18px; max-width: 340px; line-height: 1.45; }
@@ -163,6 +165,7 @@
   <div class="lento" id="avisoLento" role="status" hidden>
     <span>Está tardando más de lo normal.</span>
     <button type="button" class="enlace" id="btnVolverPortal">Volver a intentar</button>
+    <button type="button" class="cerrar" id="btnSeguirEsperando" aria-label="Seguir esperando" title="Seguir esperando"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3 3 13"/></svg></button>
   </div>
 
   <div class="lento" id="avisoSalir" role="status" hidden><span>Presiona «atrás» otra vez para salir.</span></div>
@@ -190,7 +193,11 @@
      URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
      Si el portal cambia de implementación, cámbiala aquí también. */
   var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
-  var VERSION_ENVOLTORIO = '2026-11-09a';
+  var VERSION_ENVOLTORIO = '2026-11-13a';
+  /* Segundos CON LA APP A LA VISTA sin que la página haya empezado a mostrarse antes de decir
+     «Está tardando más de lo normal». El tiempo con la app en segundo plano o con la pantalla
+     apagada no cuenta. */
+  var SEG_AVISO_LENTO = 25;
   /* true  = el portal se queda abierto debajo de la herramienta y volver a él es inmediato (recomendado).
      false = como antes: el portal se cierra al abrir una herramienta y se vuelve a cargar al regresar.
      Solo funciona con el Menu_cliente.html de noviembre 9 de 2026 o posterior en el portal; con uno más
@@ -215,7 +222,6 @@
     var urlSiguiente = '';
     var cargoAlgunaVez = false;
     var enHerramienta = false;
-    var temporizadorLento = null;
     var capaZ = 5;
     var avivando = null;
     var serieVolver = 0;
@@ -330,9 +336,63 @@
     function cancelarCarga() {
       if (siguiente) { quitar(siguiente); siguiente = null; }
       urlSiguiente = '';
-      clearTimeout(temporizadorLento);
-      avisoLento.hidden = true;
+      desarmarAviso();
       terminarProgreso();
+    }
+
+    /* ---------- Aviso «Está tardando más de lo normal» ----------
+       Antes era un reloj fijo de 25 segundos desde que empezaba la carga. Si la persona salía un momento
+       de la app (o se apagaba la pantalla) mientras cargaba, el reloj seguía corriendo y al volver el
+       aviso salía enseguida, aunque la página llegara un segundo después. Ahora solo se cuentan los
+       segundos con la app a la vista, y el aviso se quita solo apenas la página da señales de estar lista. */
+    var relojLento = null, msVisibles = 0, ultimoTic = 0;
+    function armarAviso() {
+      avisoLento.hidden = true;
+      msVisibles = 0;
+      ultimoTic = Date.now();
+      if (!relojLento) relojLento = setInterval(ticAviso, 1000);
+    }
+    function desarmarAviso() {
+      clearInterval(relojLento);
+      relojLento = null;
+      avisoLento.hidden = true;
+    }
+    function ticAviso() {
+      var ahora = Date.now(), d = ahora - ultimoTic;
+      ultimoTic = ahora;
+      if (!siguiente) { desarmarAviso(); return; }
+      if (document.hidden) return;
+      /* Si el celular congeló la app, el salto de tiempo no cuenta: como máximo 1,5 s por vuelta. */
+      msVisibles += Math.min(Math.max(d, 0), 1500);
+      if (avisoLento.hidden && msVisibles >= SEG_AVISO_LENTO * 1000) {
+        document.getElementById('btnVolverPortal').textContent = marco ? 'Volver al portal' : 'Volver a intentar';
+        avisoLento.hidden = false;
+        diag('aviso lento (' + Math.round(msVisibles / 1000) + ' s a la vista)');
+      }
+    }
+
+    /* La página que carga se muestra a los «ms» milisegundos (si antes no se mostró por otra vía).
+       Si ya había una hora prevista más temprana, se respeta esa. */
+    function mostrarEn(f, ms) {
+      if (f !== siguiente) return;
+      var en = Date.now() + ms;
+      if (f.tMostrar && f.mostrarEn <= en) return;
+      clearTimeout(f.tMostrar);
+      f.mostrarEn = en;
+      f.tMostrar = setTimeout(function () { mostrar(f); }, ms);
+    }
+
+    /* Señales de vida de la página que carga. Menu_cliente.html le cuenta a la app, durante sus primeros
+       40 segundos, cómo va («pág: dom», «pág: load», «cargando=no»). Antes la app solo las usaba para el
+       diagnóstico y esperaba el «load» del marco, que no llega hasta que bajan TODAS las imágenes, estilos
+       y letras de la página: si una sola se demoraba (el logo, una hoja de estilos de otro sitio), la
+       página ya estaba lista pero la app seguía «cargando» y a los 25 s salía el aviso. */
+    function senal(f, d) {
+      if (f !== siguiente || d.portalSena !== 'diag' || typeof d.txt !== 'string') return;
+      var t = d.txt;
+      if (/cargando=no/.test(t)) { f.dom = true; mostrarEn(f, 300); return; }
+      if (/^pág: dom\b/.test(t)) { f.dom = true; mostrarEn(f, f.v >= 2 ? 4000 : 1500); return; }
+      if (/^pág: load\b/.test(t)) { f.dom = true; mostrarEn(f, f.v >= 2 ? 3500 : 600); }
     }
 
     /* Cada página nueva (una herramienta, o el portal cuando hay que cargarlo) se abre en un marco NUEVO,
@@ -342,12 +402,7 @@
       if (siguiente) { quitar(siguiente); siguiente = null; }
       urlSiguiente = url;
       empezarProgreso();
-      avisoLento.hidden = true;
-      clearTimeout(temporizadorLento);
-      temporizadorLento = setTimeout(function () {
-        document.getElementById('btnVolverPortal').textContent = marco ? 'Volver al portal' : 'Volver a intentar';
-        avisoLento.hidden = false;
-      }, 25000);
+      armarAviso();
 
       var f = document.createElement('iframe');
       f.className = 'marco';
@@ -360,6 +415,8 @@
       f.v = 0;               /* versión del saludo de la página (2 = sabe avisar «listo») */
       f.listo = false;
       f.pintado = false;
+      f.dom = false;         /* la página ya armó su contenido (señal «pág: dom», «load» o «listo») */
+      f.cargado = false;     /* el marco disparó «load» */
       f.addEventListener('load', function () { alCargar(f); });
       f.src = url;
       document.body.appendChild(f);
@@ -375,16 +432,17 @@
     function alCargar(f) {
       diag('load ' + (f === siguiente ? 'nuevo' : 'otro'));
       if (f !== siguiente) return;
+      f.cargado = true;
       setTimeout(function () {
         if (f !== siguiente) return;
-        if (f.v >= 2) setTimeout(function () { mostrar(f); }, 3500);
-        else mostrar(f);
+        mostrarEn(f, f.v >= 2 ? 3500 : 0);
       }, 350);
     }
 
     /* La página que estaba cargando pasa a ser la que se ve. */
     function mostrar(f) {
       if (f !== siguiente) return;
+      clearTimeout(f.tMostrar);
       siguiente = null;
       urlSiguiente = '';
       var anterior = marco;
@@ -400,8 +458,7 @@
         portal = f;
       }
       cargoAlgunaVez = true;
-      clearTimeout(temporizadorLento);
-      avisoLento.hidden = true;
+      desarmarAviso();
       terminarProgreso();
       capaInicio.hidden = true;
       diag('mostrar ' + (f.esHerramienta ? 'herramienta' : 'portal') + (f.pintado ? ' pintado' : ''));
@@ -452,11 +509,18 @@
       sacudir(p);
       enfocar(p);
       diag('portal de vuelta' + (abrir ? ' → ' + abrir : ''));
-      setTimeout(function () {
-        if (n !== serieVolver || marco !== p || p.respondio || siguiente) return;
-        diag('el portal no respondió: se carga de nuevo');
-        cargar(url, true);
-      }, 3000);
+      /* Con la app en segundo plano el portal no alcanza a contestar: se espera a que vuelva a la vista. */
+      (function esperarRespuesta(ms) {
+        setTimeout(function () {
+          if (n !== serieVolver || marco !== p || p.respondio || siguiente) return;
+          if (document.hidden) { esperarRespuesta(1000); return; }
+          diag('el portal no respondió: se carga de nuevo');
+          cargar(url, true);
+          /* Si el portal contesta mientras se recarga (un celular ocupado tarda más de 3 s), se cancela la
+             recarga y se queda el que ya estaba abierto: antes se esperaba la carga completa. */
+          if (siguiente) siguiente.porSilencio = p;
+        }, ms);
+      })(3000);
     }
 
     function navegar(url) {
@@ -492,6 +556,11 @@
       if (marco || portal) irAlPortal(URL_PORTAL);
       else { enHerramienta = false; cargar(urlInicial(), true); }
     });
+    /* «Seguir esperando»: se quita el aviso y vuelve a contar desde cero. */
+    document.getElementById('btnSeguirEsperando').addEventListener('click', function () {
+      avisoLento.hidden = true;
+      msVisibles = 0;
+    });
 
     /* Mensajes de las páginas del portal (Menu_cliente.html y la página de «Acceso restringido»).
        Solo se aceptan de los marcos que la app abrió, y solo si vienen de una página de Google. */
@@ -513,7 +582,11 @@
       if (!d || typeof d !== 'object' || typeof d.portalSena !== 'string') return;
       var f = marcoDe(ev);
       if (!f) return;
-      if (d.portalSena === 'diag') { if (typeof d.txt === 'string') diag(d.txt.slice(0, 120)); return; }
+      if (d.portalSena === 'diag') {
+        if (typeof d.txt === 'string') diag(d.txt.slice(0, 120));
+        senal(f, d);
+        return;
+      }
       diag('mensaje ' + d.portalSena);
       if (d.portalSena === 'hola') {
         f.v = Number(d.v) || 1;
@@ -531,6 +604,10 @@
         confirmarPintado(f);
       } else if (d.portalSena === 'pong') {
         f.respondio = true;
+        if (siguiente && siguiente.porSilencio === f && marco === f) {
+          diag('el portal contestó tarde: se cancela la recarga');
+          cancelarCarga();
+        }
       } else if (d.portalSena === 'navegar' && typeof d.url === 'string' && RE_APPS.test(d.url)) {
         if (f === marco) navegar(d.url);      /* solo la página que se está viendo puede pedir un cambio */
       }
@@ -543,15 +620,41 @@
       barraRed.hidden = navigator.onLine !== false;
     }
     window.addEventListener('offline', estadoRed);
+    var ocultaDesde = 0;
+    function alVolverALaVista() {
+      var fuera = ocultaDesde ? Date.now() - ocultaDesde : 0;
+      ocultaDesde = 0;
+      ultimoTic = Date.now();
+      avivar(4000, true);
+      enfocar(marco);
+      if (!siguiente) return;
+      sacudir(siguiente);
+      /* Si el portal estaba cargando cuando la app pasó a segundo plano (más de 20 s) y todavía no ha dado
+         señales, el celular pudo cortar esa carga: se empieza de nuevo sola. Solo con el portal: el enlace
+         de una herramienta es de un solo uso y recargarlo daría «Acceso restringido». */
+      if (fuera >= 20000 && !siguiente.esHerramienta && !siguiente.dom && !siguiente.cargado && !siguiente.v) {
+        diag('la carga del portal quedó en pausa ' + Math.round(fuera / 1000) + ' s: se reintenta');
+        cargar(urlSiguiente, true);
+      }
+    }
     document.addEventListener('visibilitychange', function () {
       diag('visibilidad ' + document.visibilityState);
-      if (!document.hidden) { avivar(4000, true); enfocar(marco); }
+      if (document.hidden) { if (!ocultaDesde) ocultaDesde = Date.now(); }
+      else alVolverALaVista();
     });
+    window.addEventListener('pagehide', function () { if (!ocultaDesde) ocultaDesde = Date.now(); });
     window.addEventListener('blur', function () { diag('foco en la página'); });
-    window.addEventListener('pageshow', function () { avivar(4000, true); });
+    window.addEventListener('pageshow', function () { if (!document.hidden) alVolverALaVista(); });
     window.addEventListener('online', function () {
       estadoRed();
-      if (!cargoAlgunaVez) cargar(urlInicial());
+      if (siguiente) return;
+      /* Si la app abrió sin internet, el marco quedó con la página de error del navegador (nunca saluda):
+         al volver la conexión se carga el portal. Antes solo se reintentaba si nada había cargado nunca. */
+      if (!cargoAlgunaVez || (marco && !marco.v)) {
+        diag('volvió la conexión: se carga el portal');
+        enHerramienta = false;
+        cargar(urlInicial(), true);
+      }
     });
     estadoRed();
 

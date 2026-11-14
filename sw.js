@@ -7,7 +7,7 @@
    la app se quedaba en la pantalla de inicio antes de empezar siquiera a cargar el portal.
    Por eso un cambio en esta carpeta se ve la SEGUNDA vez que se abre la app después de subirlo.
    Cuando cambies algo de esta carpeta, sube VERSION para que los celulares descarten la copia anterior. */
-var VERSION = 'pgi-envoltorio-2026-11-09a';
+var VERSION = 'pgi-envoltorio-2026-11-13a';
 var ARCHIVOS = [
   './',
   './index.html',
