@@ -7,7 +7,7 @@
    la app se quedaba en la pantalla de inicio antes de empezar siquiera a cargar el portal.
    Por eso un cambio en esta carpeta se ve la SEGUNDA vez que se abre la app después de subirlo.
    Cuando cambies algo de esta carpeta, sube VERSION para que los celulares descarten la copia anterior. */
-var VERSION = 'pgi-envoltorio-2026-11-15a';
+var VERSION = 'pgi-envoltorio-2026-11-16a';
 var ARCHIVOS = [
   './',
   './index.html',
@@ -49,7 +49,11 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  var esPagina = req.mode === 'navigate';
+  /* Solo la página de la app (la carpeta o index.html) se trata como «la app». Otras páginas de esta carpeta
+     (por ejemplo privacidad.html) se piden a la red tal cual (desde el 16 de noviembre de 2026). */
+  var base = new URL('./', self.location).pathname;
+  var esPagina = req.mode === 'navigate' && (url.pathname === base || url.pathname === base + 'index.html');
+  if (req.mode === 'navigate' && !esPagina) return;
   var clave = esPagina ? new Request('./index.html') : req;
   var deLaRed = fetch(esPagina ? new Request('./index.html', { cache: 'no-cache' }) : req)
     .then(function (resp) {
