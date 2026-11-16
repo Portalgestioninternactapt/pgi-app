@@ -193,11 +193,15 @@
      URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
      Si el portal cambia de implementación, cámbiala aquí también. */
   var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
-  var VERSION_ENVOLTORIO = '2026-11-13a';
+  var VERSION_ENVOLTORIO = '2026-11-15a';
   /* Segundos CON LA APP A LA VISTA sin que la página haya empezado a mostrarse antes de decir
      «Está tardando más de lo normal». El tiempo con la app en segundo plano o con la pantalla
      apagada no cuenta. */
   var SEG_AVISO_LENTO = 25;
+  /* Monitor del portal: una carga que tarda este número de segundos o más (con la app a la vista) se
+     anota como «lenta» y se le entrega al portal para la pestaña «Monitor» del panel. Las cargas normales
+     no se envían. */
+  var SEG_CARGA_LENTA = 8;
   /* true  = el portal se queda abierto debajo de la herramienta y volver a él es inmediato (recomendado).
      false = como antes: el portal se cierra al abrir una herramienta y se vuelve a cargar al regresar.
      Solo funciona con el Menu_cliente.html de noviembre 9 de 2026 o posterior en el portal; con uno más
@@ -367,8 +371,57 @@
       if (avisoLento.hidden && msVisibles >= SEG_AVISO_LENTO * 1000) {
         document.getElementById('btnVolverPortal').textContent = marco ? 'Volver al portal' : 'Volver a intentar';
         avisoLento.hidden = false;
+        siguiente.avisoMostrado = true;
         diag('aviso lento (' + Math.round(msVisibles / 1000) + ' s a la vista)');
       }
+    }
+
+    /* ---------- Monitor del portal: cargas lentas (versión 2026-11-15a) ----------
+       La app mide cuánto tarda cada página desde que la pide hasta que la página avisa que ya tiene su
+       contenido («listo»; incluye la espera a Google), contando SOLO el tiempo con la app a la vista. Si tarda SEG_CARGA_LENTA o más, si sale el
+       aviso «Está tardando» o si la persona se cansa de esperar («Volver…»), guarda la medida en el celular
+       y se la entrega al portal, que la deja en el panel (pestaña «Monitor»). Las cargas normales no se
+       envían, así que esto no agrega llamados. */
+    var K_MEDIDAS = 'pgi_medidas';
+    var ultimaEntrega = 0;
+    var ocultaDesde = 0;
+    function leerMedidas() {
+      try {
+        var l = JSON.parse(localStorage.getItem(K_MEDIDAS) || '[]');
+        var limite = Date.now() - 6 * 3600 * 1000;
+        return Array.isArray(l) ? l.filter(function (m) { return m && m.t > limite; }) : [];
+      } catch (e) { return []; }
+    }
+    function guardarMedidas(l) { guardar(K_MEDIDAS, JSON.stringify(l.slice(-20))); }
+    /* Tiempo con la app a la vista desde que se pidió la página f (se descuenta el tiempo en segundo plano). */
+    var ocultoTotal = 0;
+    function ocultoHastaAhora() { return ocultoTotal + (ocultaDesde ? Date.now() - ocultaDesde : 0); }
+    function msVisiblesDesde(f) { return Math.max(0, Date.now() - f.t0 - (ocultoHastaAhora() - f.oc0)); }
+    function anotarCarga(f, tipo, ms) {
+      if (!f || !f.urlMedida || f.medida) return;
+      if (ms < 3000 || (tipo === 'lento' && ms < SEG_CARGA_LENTA * 1000)) return;
+      f.medida = true;
+      var red = '';
+      try { red = (navigator.connection && navigator.connection.effectiveType) || ''; } catch (e) { }
+      var l = leerMedidas();
+      l.push({ i: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), t: Date.now(), url: f.urlMedida,
+               ms: Math.round(ms), tipo: tipo, red: red, v: VERSION_ENVOLTORIO });
+      guardarMedidas(l);
+      diag('carga lenta anotada: ' + tipo + ' ' + Math.round(ms / 1000) + ' s');
+      setTimeout(function () { entregarMedidas(false); }, 1500);
+    }
+    /* Se entregan al portal cuando está abierto (al mostrarse, al volver a él o cuando las pide después de
+       ingresar). Se borran del celular solo cuando el portal confirma que las guardó («medidas-ok»). */
+    function entregarMedidas(ya) {
+      var l = leerMedidas();
+      if (!l.length || !portal || !portal.ventana) return;
+      if (!ya && Date.now() - ultimaEntrega < 5000) return;
+      ultimaEntrega = Date.now();
+      decir(portal, { portalSena: 'medidas', lista: l.slice(0, 15) });
+    }
+    function quitarMedidas(ids) {
+      if (!Array.isArray(ids) || !ids.length) return;
+      guardarMedidas(leerMedidas().filter(function (m) { return ids.indexOf(m.i) === -1; }));
     }
 
     /* La página que carga se muestra a los «ms» milisegundos (si antes no se mostró por otra vía).
@@ -417,6 +470,10 @@
       f.pintado = false;
       f.dom = false;         /* la página ya armó su contenido (señal «pág: dom», «load» o «listo») */
       f.cargado = false;     /* el marco disparó «load» */
+      f.urlMedida = String(url).split('?')[0];
+      f.t0 = Date.now();
+      f.oc0 = ocultoHastaAhora();
+      f.avisoMostrado = false;
       f.addEventListener('load', function () { alCargar(f); });
       f.src = url;
       document.body.appendChild(f);
@@ -443,6 +500,17 @@
     function mostrar(f) {
       if (f !== siguiente) return;
       clearTimeout(f.tMostrar);
+      /* Las páginas que no avisan «listo» (versiones viejas) se miden aquí; las demás, cuando avisan. */
+      if (f.v < 2) anotarCarga(f, f.avisoMostrado ? 'aviso' : 'lento', msVisiblesDesde(f));
+      /* Una página nueva que ya se muestra pero a los 30 s (a la vista) todavía no avisa «listo» también
+         queda anotada: sigue en «Cargando…» para la persona. */
+      else (function revisar() {
+        setTimeout(function () {
+          if (!f.isConnected || f.listo || f.medida) return;
+          if (msVisiblesDesde(f) < 30000) { revisar(); return; }
+          anotarCarga(f, 'lento', msVisiblesDesde(f));
+        }, 5000);
+      })();
       siguiente = null;
       urlSiguiente = '';
       var anterior = marco;
@@ -553,6 +621,8 @@
     });
 
     document.getElementById('btnVolverPortal').addEventListener('click', function () {
+      /* La persona se cansó de esperar: queda anotado para el Monitor del portal. */
+      if (siguiente) anotarCarga(siguiente, 'abandono', msVisiblesDesde(siguiente));
       if (marco || portal) irAlPortal(URL_PORTAL);
       else { enHerramienta = false; cargar(urlInicial(), true); }
     });
@@ -599,7 +669,9 @@
         if (f.v < 2) f.v = 2;
         f.listo = true;
         if (d.pintado === true) confirmarPintado(f);
+        anotarCarga(f, f.avisoMostrado ? 'aviso' : 'lento', msVisiblesDesde(f));
         mostrar(f);
+        if (f === portal) setTimeout(function () { entregarMedidas(true); }, 3000);
       } else if (d.portalSena === 'pintado') {
         confirmarPintado(f);
       } else if (d.portalSena === 'pong') {
@@ -608,6 +680,11 @@
           diag('el portal contestó tarde: se cancela la recarga');
           cancelarCarga();
         }
+        if (f === portal) entregarMedidas(false);
+      } else if (d.portalSena === 'medidas-pedir') {
+        if (f === portal && !f.esHerramienta) { f.ventana = f.ventana || ev.source; entregarMedidas(true); }
+      } else if (d.portalSena === 'medidas-ok') {
+        if (f === portal && !f.esHerramienta) quitarMedidas(d.ids);
       } else if (d.portalSena === 'navegar' && typeof d.url === 'string' && RE_APPS.test(d.url)) {
         if (f === marco) navegar(d.url);      /* solo la página que se está viendo puede pedir un cambio */
       }
@@ -620,9 +697,9 @@
       barraRed.hidden = navigator.onLine !== false;
     }
     window.addEventListener('offline', estadoRed);
-    var ocultaDesde = 0;
     function alVolverALaVista() {
       var fuera = ocultaDesde ? Date.now() - ocultaDesde : 0;
+      ocultoTotal += fuera;
       ocultaDesde = 0;
       ultimoTic = Date.now();
       avivar(4000, true);
