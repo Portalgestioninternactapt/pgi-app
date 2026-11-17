@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Solo modo claro: Chrome y Samsung Internet no le «oscurecen» los colores a la pantalla de carga. -->
+  <meta name="color-scheme" content="only light">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Portal de Gestión Interna – Inclusión Social</title>
   <meta name="description" content="Portal de Gestión Interna · Inclusión Social (SENA Apartadó).">
 
-  <!-- La conexión con Google se abre mientras se lee esta página: el portal empieza a cargar antes. -->
+  <!-- Las conexiones con Google y con el sitio de Bootstrap (lo usan todas las páginas del portal) se abren
+       mientras se lee esta página: con internet lento ahorra varios viajes de ida y vuelta. -->
   <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="dns-prefetch" href="https://script.googleusercontent.com">
 
   <!-- Vista previa al compartir el enlace (WhatsApp, correo, Teams, Facebook). Las direcciones deben ser completas. -->
@@ -57,7 +61,7 @@
     .ic { width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.125em; fill: none; stroke: currentColor;
           stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
-    .capa { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center;
+    .capa { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; display: flex; flex-direction: column; align-items: center;
             justify-content: center; text-align: center; padding: 24px; background: var(--fondo);
             transition: opacity .25s ease; }
     .capa[hidden] { display: none; }
@@ -123,7 +127,7 @@
               font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
     .cerrar:hover { background: #f1f3f5; color: var(--texto); }
 
-    .modal { position: fixed; inset: 0; z-index: 40; background: rgba(30, 30, 30, .55);
+    .modal { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 40; background: rgba(30, 30, 30, .55);
              -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
              display: flex; align-items: center; justify-content: center; padding: 14px; }
     .modal[hidden] { display: none; }
@@ -156,7 +160,7 @@
   <div class="barra-red" id="barraRed" role="status" hidden><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6a9 9 0 0 1 12 0M4.3 8.6a5.5 5.5 0 0 1 7.4 0M8 12h.01M2 2l12 12"/></svg> Sin conexión a internet. El portal necesita internet para funcionar.</div>
 
   <div class="capa" id="capaInicio" role="status" aria-live="polite">
-    <img src="iconos/icono-192.png" alt="">
+    <img src="iconos/icono-carga.png" alt="" width="84" height="84" decoding="async">
     <h1>Portal de Gestión Interna</h1>
     <p>Inclusión Social · Complejo Tecnológico Agroindustrial, Pecuario y Turístico – Apartadó</p>
     <div class="puntos" aria-label="Cargando"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -168,10 +172,15 @@
     <button type="button" class="cerrar" id="btnSeguirEsperando" aria-label="Seguir esperando" title="Seguir esperando"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3 3 13"/></svg></button>
   </div>
 
+  <div class="lento" id="avisoFalla" role="alert" hidden>
+    <span id="avisoFallaTexto">La página no terminó de abrir.</span>
+    <button type="button" class="enlace" id="btnFalla">Reintentar</button>
+  </div>
+
   <div class="lento" id="avisoSalir" role="status" hidden><span>Presiona «atrás» otra vez para salir.</span></div>
 
   <div class="sugerencia" id="sugerencia" role="region" aria-label="Instalar la app" hidden>
-    <img src="iconos/icono-192.png" alt="">
+    <img src="iconos/icono-carga.png" alt="" width="40" height="40" loading="lazy" decoding="async">
     <div class="txt"><b>Instala el portal</b><span id="sugerenciaTexto">Ábrelo como una app, a pantalla completa.</span></div>
     <button type="button" class="btn" id="btnInstalar"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M2.5 13.5h11"/></svg> Instalar</button>
     <button type="button" class="cerrar" id="btnNoInstalar" aria-label="Ahora no" title="Ahora no"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3 3 13"/></svg></button>
@@ -193,7 +202,7 @@
      URL /exec del portal (la misma de URL_PORTAL en los Auth.gs).
      Si el portal cambia de implementación, cámbiala aquí también. */
   var URL_PORTAL = 'https:\/\/script.google.com/macros/s/AKfycbzcuivsIN07RQ8-us8PC9u7cdQ1vy6l6qDSiIVRuRmynNB5Gend0-jjgw1fMcKzEVfQhA/exec';
-  var VERSION_ENVOLTORIO = '2026-11-15a';
+  var VERSION_ENVOLTORIO = '2026-11-17a';
   /* Segundos CON LA APP A LA VISTA sin que la página haya empezado a mostrarse antes de decir
      «Está tardando más de lo normal». El tiempo con la app en segundo plano o con la pantalla
      apagada no cuenta. */
@@ -207,6 +216,10 @@
      Solo funciona con el Menu_cliente.html de noviembre 9 de 2026 o posterior en el portal; con uno más
      viejo la app se comporta sola como «false». */
   var MANTENER_PORTAL = true;
+  /* Segundos después de que una página termina de bajar sin haberse presentado (sin el saludo de
+     Menu_cliente.html) para decir «La página no terminó de abrir». Pasa cuando Google responde con su
+     página de error (por ejemplo, demasiadas personas al mismo tiempo) o sin internet. */
+  var SEG_REVISAR_FALLA = 5;
   /* ====================================================== */
 
   (function () {
@@ -219,6 +232,7 @@
     var progreso = document.getElementById('progreso');
     var avisoLento = document.getElementById('avisoLento');
     var avisoSalir = document.getElementById('avisoSalir');
+    var avisoFalla = document.getElementById('avisoFalla');
     var PERMISOS = 'camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; fullscreen; autoplay; display-capture';
     var marco = null;        /* página que se ve (el portal o una herramienta) */
     var siguiente = null;    /* página que está cargando (encima, transparente) */
@@ -454,6 +468,7 @@
       if (siguiente && url === urlSiguiente && !forzar) return;
       if (siguiente) { quitar(siguiente); siguiente = null; }
       urlSiguiente = url;
+      ocultarFalla();
       empezarProgreso();
       armarAviso();
 
@@ -488,12 +503,86 @@
        saludaron pero no alcanzaron a avisar (se muestran a los 3,5 segundos pase lo que pase). */
     function alCargar(f) {
       diag('load ' + (f === siguiente ? 'nuevo' : 'otro'));
+      if (!f.revisandoFalla) {
+        f.revisandoFalla = true;
+        setTimeout(function () { revisarFalla(f); }, SEG_REVISAR_FALLA * 1000);
+      }
       if (f !== siguiente) return;
       f.cargado = true;
       setTimeout(function () {
         if (f !== siguiente) return;
         mostrarEn(f, f.v >= 2 ? 3500 : 0);
       }, 350);
+    }
+
+    /* ---------- Página que no se presentó (versión 2026-11-17a) ----------
+       Todas las páginas del portal y de las herramientas saludan a la app («hola») apenas arrancan. Si el
+       marco terminó de bajar y a los SEG_REVISAR_FALLA segundos no saludó ni dio ninguna señal, lo que se
+       ve NO es el portal: es la página de error de Google (por ejemplo, cuando hay demasiadas ejecuciones
+       al mismo tiempo), la de «sin conexión» del navegador o una de inicio de sesión de Google. Antes la
+       app se quedaba ahí sin salida (dentro de la app no hay botón de recargar). Ahora sale abajo un aviso
+       con «Reintentar» (o «Volver al portal» en una herramienta, porque su enlace es de un solo uso).
+       En el portal, además, se reintenta sola una vez tras una espera al azar de 3 a 8 segundos, para
+       que si Google estaba ocupado no le lleguen todos los celulares en el mismo segundo. Como máximo
+       2 reintentos solos cada 5 minutos: después queda en manos de la persona. */
+    var fallaDe = null, autoReintentos = [];
+    function ocultarFalla() { fallaDe = null; avisoFalla.hidden = true; }
+    function puedeReintentarSolo() {
+      var ahora = Date.now();
+      autoReintentos = autoReintentos.filter(function (t) { return ahora - t < 5 * 60000; });
+      return autoReintentos.length < 2;
+    }
+    function reintentarPortal() {
+      ocultarFalla();
+      enHerramienta = false;
+      cargar(urlInicial(), true);
+    }
+    function revisarFalla(f) {
+      if (!f.isConnected || f.v || f.dom || f.listo || f !== marco) return;
+      if (document.hidden) { setTimeout(function () { revisarFalla(f); }, 2000); return; }
+      mostrarFalla(f);
+    }
+    function mostrarFalla(f) {
+      fallaDe = f;
+      var sinRed = navigator.onLine === false, texto, boton;
+      if (f.esHerramienta) {
+        texto = sinRed ? 'Sin conexión: la herramienta no abrió.' : 'La herramienta no terminó de abrir.';
+        boton = 'Volver al portal';
+      } else {
+        texto = sinRed ? 'Sin conexión: el portal abrirá cuando vuelva internet.' : 'El portal no terminó de abrir (Google puede estar ocupado).';
+        boton = sinRed ? 'Reintentar' : 'Reintentar ahora';
+      }
+      var solo = !f.esHerramienta && !sinRed && puedeReintentarSolo();
+      if (solo) texto += ' Se reintenta en unos segundos.';
+      document.getElementById('avisoFallaTexto').textContent = texto;
+      document.getElementById('btnFalla').textContent = boton;
+      avisoFalla.hidden = false;
+      diag('la página no se presentó: aviso de falla' + (solo ? ' (reintento solo)' : ''));
+      if (!solo) return;
+      setTimeout(function () {
+        if (fallaDe !== f || marco !== f || siguiente || document.hidden || navigator.onLine === false) return;
+        autoReintentos.push(Date.now());
+        diag('reintento solo del portal');
+        reintentarPortal();
+      }, 3000 + Math.floor(Math.random() * 5000));
+    }
+    document.getElementById('btnFalla').addEventListener('click', function () {
+      var f = fallaDe;
+      ocultarFalla();
+      if (f && f.esHerramienta) irAlPortal(URL_PORTAL);
+      else reintentarPortal();
+    });
+
+    /* ---------- Service worker ----------
+       Se registra cuando el portal ya se ve (o a los 30 s), y en un momento libre del celular: así la
+       primera vez no le quita internet al portal mientras carga. updateViaCache: 'none' = el celular
+       pregunta a GitHub por sw.js sin usar la copia de su memoria (GitHub la guarda 10 minutos). */
+    var swPedido = false;
+    function registrarSW() {
+      if (swPedido || !('serviceWorker' in navigator) || !window.isSecureContext) return;
+      swPedido = true;
+      var ir = function () { try { navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () { }); } catch (e) { } };
+      if (window.requestIdleCallback) window.requestIdleCallback(ir, { timeout: 5000 }); else ir();
     }
 
     /* La página que estaba cargando pasa a ser la que se ve. */
@@ -540,6 +629,7 @@
         setTimeout(function () { if (marco === f && enHerramienta) ponerGuardia(); }, 300);
       }
       programarSugerencia();
+      setTimeout(registrarSW, 3000);
     }
 
     /* Android deja la página de Google detenida en «Cargando…» hasta que recibe el foco (antes había que
@@ -652,6 +742,7 @@
       if (!d || typeof d !== 'object' || typeof d.portalSena !== 'string') return;
       var f = marcoDe(ev);
       if (!f) return;
+      if (f === fallaDe) ocultarFalla();
       if (d.portalSena === 'diag') {
         if (typeof d.txt === 'string') diag(d.txt.slice(0, 120));
         senal(f, d);
@@ -724,14 +815,16 @@
     window.addEventListener('pageshow', function () { if (!document.hidden) alVolverALaVista(); });
     window.addEventListener('online', function () {
       estadoRed();
-      if (siguiente) return;
       /* Si la app abrió sin internet, el marco quedó con la página de error del navegador (nunca saluda):
-         al volver la conexión se carga el portal. Antes solo se reintentaba si nada había cargado nunca. */
-      if (!cargoAlgunaVez || (marco && !marco.v)) {
-        diag('volvió la conexión: se carga el portal');
-        enHerramienta = false;
-        cargar(urlInicial(), true);
-      }
+         al volver la conexión se carga el portal. Se espera un momento al azar (0,4 a 3 s): cuando vuelve
+         el wifi de la sede vuelve para todos a la vez, y así no le llegan todos a Google en el mismo segundo. */
+      setTimeout(function () {
+        if (siguiente || navigator.onLine === false) return;
+        if (!cargoAlgunaVez || (marco && !marco.v)) {
+          diag('volvió la conexión: se carga el portal');
+          reintentarPortal();
+        }
+      }, 400 + Math.floor(Math.random() * 2600));
     });
     estadoRed();
 
@@ -807,7 +900,7 @@
     function li(html) { var e = document.createElement('li'); e.innerHTML = html; return e; }
     function mostrarPasos() {
       var c = document.getElementById('cuerpoInstalar');
-      c.replaceChildren();
+      while (c.firstChild) c.removeChild(c.firstChild);
       var ol = document.createElement('ol');
       ol.className = 'pasos';
       var nota = '';
@@ -842,12 +935,25 @@
     modal.addEventListener('click', function (e) { if (e.target === modal) cerrarPasos(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) cerrarPasos(); });
 
+    /* ---------- App instalada abierta otra vez (Chrome y Edge) ----------
+       manifest.webmanifest pide «focus-existing»: si la app ya está abierta, tocar su ícono (o un enlace
+       …/?abrir=herramienta) trae al frente la ventana que ya estaba, con su sesión, en vez de abrir otra.
+       Si el enlace traía ?abrir=…, se le pasa al portal. */
+    if ('launchQueue' in window && window.launchQueue && window.launchQueue.setConsumer) {
+      try {
+        window.launchQueue.setConsumer(function (p) {
+          if (!cargoAlgunaVez || !p || !p.targetURL) return;
+          var abrir = '';
+          try { abrir = String(new URL(p.targetURL).searchParams.get('abrir') || '').toLowerCase(); } catch (e) { }
+          if (/^[a-z0-9-]{1,60}$/.test(abrir)) irAlPortal(URL_PORTAL + '?abrir=' + abrir);
+        });
+      } catch (e) { }
+    }
+
     /* ---------- Arranque ---------- */
     try { history.replaceState({ pgi: 'portal' }, ''); } catch (e) { }
     cargar(urlInicial());
-    if ('serviceWorker' in navigator && window.isSecureContext) {
-      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { }); });
-    }
+    setTimeout(registrarSW, 30000);
   })();
 </script>
 </body>
